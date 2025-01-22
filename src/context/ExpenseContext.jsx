@@ -1,4 +1,5 @@
 import React, { createContext, useState, useEffect } from "react";
+import axios from "axios";
 
 export const ExpenseContext = createContext();
 
@@ -6,32 +7,63 @@ export const ExpenseProvider = ({ children }) => {
   const [expenses, setExpenses] = useState([]);
   const [categories, setCategories] = useState([]);
 
+  const [data, setData] = useState(false);
   useEffect(() => {
-    const storedExpenses = JSON.parse(localStorage.getItem("expenses")) || [];
-    const storedCategories =
-      JSON.parse(localStorage.getItem("categories")) || [];
-    setExpenses(storedExpenses);
-    setCategories([...categories, ...storedCategories]);
+    const fetchCategories = async () => {
+      try {
+        const response = await axios.get(
+          `${process.env.REACT_APP_API_URL}/category`
+        );
+        setCategories(response?.data?.data || []);
+        console.log(response?.data?.data);
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+      }
+    };
+
+    fetchCategories();
   }, []);
-
   useEffect(() => {
-    localStorage.setItem("expenses", JSON.stringify(expenses));
-    localStorage.setItem("categories", JSON.stringify(categories));
-  }, [expenses, categories]);
+    const fetchExpense = async () => {
+      try {
+        const response = await axios.get(
+          `${process.env.REACT_APP_API_URL}/expense`
+        );
+        setExpenses(response?.data?.data || []);
+      } catch (error) {
+        console.error("Error fetching Expense:", error);
+      }
+    };
 
-  const addExpense = (expense) => setExpenses([...expenses, expense]);
-  const updateExpense = (id, updatedExpense) => {
-    setExpenses(expenses.map((exp) => (exp.id === id ? updatedExpense : exp)));
-  };
-  const deleteExpense = (id) =>
-    setExpenses(expenses.filter((exp) => exp.id !== id));
-  const clearExpenses = () => setExpenses([]);
-  const addCategory = (category) => {
-    if (!categories.includes(category)) {
-      setCategories([...categories, category]);
+    fetchExpense();
+  }, [data]);
+
+  const deleteExpense = async (id) => {
+    try {
+      setData(true);
+      await axios.delete(`${process.env.REACT_APP_API_URL}/expense/${id}`);
+      setExpenses((prevExpenses) =>
+        prevExpenses.filter((expense) => expense.id !== id)
+      );
+      setData(false);
+    } catch (error) {
+      console.error("Error deleting expense:", error);
     }
   };
-  
+
+  const addExpense = async (expense) => {
+    try {
+      setData(true);
+      const response = await axios.post(
+        `${process.env.REACT_APP_API_URL}/expense/create`,
+        expense
+      );
+      setExpenses([...expenses, response.data?.data]);
+      setData(false);
+    } catch (error) {
+      console.error("Error creating expense:", error);
+    }
+  };
 
   return (
     <ExpenseContext.Provider
@@ -39,11 +71,9 @@ export const ExpenseProvider = ({ children }) => {
         expenses,
         categories,
         addExpense,
-        updateExpense,
+        setExpenses,
         deleteExpense,
-        clearExpenses,
-        addCategory,
-        setExpenses
+        setData
       }}
     >
       {children}

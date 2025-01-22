@@ -3,18 +3,23 @@ import { ExpenseContext } from "../context/ExpenseContext";
 import EditExpenseModal from "./EditExpenseModal";
 import { FaEdit, FaTrash } from "react-icons/fa";
 import Papa from "papaparse";
+import moment from "moment";
+import axios from "axios";
 
 const ExpenseList = () => {
-  const { expenses, deleteExpense, setExpenses } = useContext(ExpenseContext);
+  const { expenses, deleteExpense, setExpenses, categories } =
+    useContext(ExpenseContext);
+  const { setData } = useContext(ExpenseContext);
+
   const [selectedExpense, setSelectedExpense] = useState(null);
   const [sortKey, setSortKey] = useState("");
+
   const [filters, setFilters] = useState({
     category: "",
     date: "",
     description: "",
   });
 
-  // Sort expenses based on sortKey
   const sortedExpenses = [...expenses].sort((a, b) => {
     if (sortKey === "date") return new Date(a.date) - new Date(b.date);
     if (sortKey === "amount") return b.amount - a.amount;
@@ -22,20 +27,23 @@ const ExpenseList = () => {
     return 0;
   });
 
-  // Filter expenses based on filters
   const filteredExpenses = sortedExpenses.filter((expense) => {
     const matchesCategory =
-      !filters.category || expense.category === filters.category;
-    const matchesDate = !filters.date || expense.date === filters.date;
+      !filters.category ||
+      expense.category[0] === filters.category.toLowerCase();
+    const matchesDate =
+      !filters.date ||
+      moment(expense.date).format("YYYY-MM-DD") === filters.date;
+
     const matchesDescription =
       !filters.description ||
       expense.description
         .toLowerCase()
         .includes(filters.description.toLowerCase());
+
     return matchesCategory && matchesDate && matchesDescription;
   });
 
-  // Export to CSV functionality
   const exportToCSV = (data) => {
     const csvRows = [
       ["Date", "Category", "Description", "Amount"],
@@ -58,8 +66,6 @@ const ExpenseList = () => {
     link.click();
     document.body.removeChild(link);
   };
-
-  // Handle CSV upload
   const handleCSVUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -104,6 +110,19 @@ const ExpenseList = () => {
     });
   };
 
+  const handleDeleteALl = async (e) => {
+    try {
+      setData(true);
+      const response = await axios.delete(
+        `${process.env.REACT_APP_API_URL}/expense/delete/all`
+      );
+      setData(false);
+      alert(response?.data?.message || "Update success");
+    } catch (error) {
+      console.error("Error updating expense:", error);
+    }
+  };
+
   return (
     <div className="mt-4 bg-white dark:bg-gray-800 text-black dark:text-white p-4 rounded-lg shadow-md">
       <h2 className="text-xl font-bold mb-4 dark:text-gray-100">
@@ -129,13 +148,11 @@ const ExpenseList = () => {
             className="p-2 border w-full rounded bg-gray-200 dark:bg-gray-800 text-black dark:text-white"
           >
             <option value="">Filter by Category</option>
-            {[...new Set(expenses.map((exp) => exp.category))].map(
-              (category) => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
-              )
-            )}
+            {categories?.map((category) => (
+              <option key={category} value={category?.name}>
+                {category?.name}
+              </option>
+            ))}
           </select>
           <input
             type="date"
@@ -146,7 +163,6 @@ const ExpenseList = () => {
         </div>
       </div>
 
-      {/* CSV Upload */}
       <div className="mb-4">
         <label className="block text-gray-700 dark:text-gray-300 font-bold mb-2">
           Upload CSV:
@@ -159,7 +175,6 @@ const ExpenseList = () => {
         />
       </div>
 
-      {/* Table */}
       <div className="overflow-y-auto" style={{ maxHeight: "400px" }}>
         {filteredExpenses.length ? (
           <table className="w-full border-collapse border border-gray-600 dark:border-gray-400">
@@ -189,7 +204,7 @@ const ExpenseList = () => {
                   className="hover:bg-gray-200 dark:hover:bg-gray-600"
                 >
                   <td className="border border-gray-600 dark:border-gray-400 p-2">
-                    {exp.date}
+                    {moment(exp.date).format("DD/MM/YYYY")}
                   </td>
                   <td className="border border-gray-600 dark:border-gray-400 p-2">
                     {exp.category}
@@ -208,7 +223,7 @@ const ExpenseList = () => {
                       <FaEdit />
                     </button>
                     <button
-                      onClick={() => deleteExpense(exp.id)}
+                      onClick={() => deleteExpense(exp._id)}
                       className="text-red-400 hover:text-red-500"
                     >
                       <FaTrash />
@@ -225,7 +240,7 @@ const ExpenseList = () => {
 
       <div className="flex justify-between items-center">
         <button
-          onClick={() => setExpenses([])}
+          onClick={() => handleDeleteALl()}
           className="bg-red-500 text-white px-4 py-2 rounded mt-4 hover:bg-red-600"
         >
           Reset All

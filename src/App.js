@@ -5,8 +5,6 @@ import Analytics from "./components/Analytics";
 import BudgetTracker from "./components/BudgetTracker";
 import RecurringExpenses from "./components/RecurringExpenses";
 import { ExpenseProvider } from "./context/ExpenseContext";
-
-import { FaMoon, FaSun } from "react-icons/fa";
 import { ThemeProvider } from "./context/ThemeContext";
 import ThemeToggle from "./components/ThemeToggle";
 
@@ -30,7 +28,7 @@ const App = () => {
                 <ExpenseList />
               </div>
             </div>
-            <div >
+            <div>
               <Analytics />
             </div>
             <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">

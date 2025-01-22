@@ -1,8 +1,9 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { ExpenseContext } from "../context/ExpenseContext";
+import axios from "axios";
 
 const AddExpenseForm = () => {
-  const { addExpense, categories, addCategory } = useContext(ExpenseContext);
+  const { addExpense, categories, setCategories } = useContext(ExpenseContext);
   const [formData, setFormData] = useState({
     amount: "",
     category: "",
@@ -11,16 +12,38 @@ const AddExpenseForm = () => {
   });
   const [newCategory, setNewCategory] = useState("");
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    addExpense({ ...formData, id: Date.now() });
-    setFormData({ amount: "", category: "", date: "", description: "" });
+    try {
+      const newExpense = {
+        ...formData,
+      };
+      await axios.post(
+        `${process.env.REACT_APP_API_URL}/expense/create`,
+        newExpense
+      );
+      addExpense(newExpense);
+      setFormData({ amount: "", category: "", date: "", description: "" });
+    } catch (error) {
+      console.error("Error adding expense:", error);
+    }
   };
 
-  const handleAddCategory = () => {
+  const handleAddCategory = async () => {
     if (newCategory) {
-      addCategory(newCategory);
-      setNewCategory("");
+      try {
+        const response = await axios.post(
+          `${process.env.REACT_APP_API_URL}/category/create`,
+          { name: newCategory }
+        );
+        setCategories((prevCategories) => [
+          ...prevCategories,
+          response.data?.data,
+        ]); // Update categories state with new category
+        setNewCategory(""); // Clear input after adding
+      } catch (error) {
+        console.error("Error adding category:", error);
+      }
     }
   };
 
@@ -47,9 +70,9 @@ const AddExpenseForm = () => {
           required
         >
           <option value="">Select Category</option>
-          {[...new Set(categories)].map((cat, idx) => (
-            <option key={idx} value={cat}>
-              {cat}
+          {categories?.map((cat) => (
+            <option key={cat._id} value={cat.name}>
+              {cat.name}
             </option>
           ))}
         </select>

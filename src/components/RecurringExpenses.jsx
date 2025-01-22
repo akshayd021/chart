@@ -1,4 +1,5 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useEffect, useContext } from "react";
+import axios from "axios";
 import { ExpenseContext } from "../context/ExpenseContext";
 
 const RecurringExpenses = () => {
@@ -10,21 +11,53 @@ const RecurringExpenses = () => {
     category: "",
     frequency: "monthly",
   });
+  const [selectedExpense, setSelectedExpense] = useState(null); // Track the selected recurring expense
 
-  const handleAddRecurring = () => {
-    setRecurring([...recurring, newRecurring]);
-    setNewRecurring({
-      description: "",
-      amount: "",
-      category: "",
-      frequency: "monthly",
-    });
+  // Fetch recurring expenses from the API when the component mounts
+  useEffect(() => {
+    const fetchRecurringExpenses = async () => {
+      try {
+        const response = await axios.get(
+          `${process.env.REACT_APP_API_URL}/recurring`
+        );
+        setRecurring(response.data?.data);
+      } catch (error) {
+        console.error("Error fetching recurring expenses:", error);
+      }
+    };
+
+    fetchRecurringExpenses();
+  }, []);
+
+  // Add a new recurring expense to the API
+  const handleAddRecurring = async () => {
+    try {
+      const response = await axios.post(
+        `${process.env.REACT_APP_API_URL}/recurring/create`,
+        newRecurring
+      );
+      setRecurring([...recurring, response.data]);
+      setNewRecurring({
+        description: "",
+        amount: "",
+        category: "",
+        frequency: "monthly",
+      });
+    } catch (error) {
+      console.error("Error adding recurring expense:", error);
+    }
   };
 
-  const applyRecurringExpenses = () => {
-    recurring.forEach((expense) => {
-      addExpense({ ...expense, date: new Date().toISOString().split("T")[0] });
-    });
+  // Apply selected recurring expense (add to general expenses)
+  const applyRecurringExpense = () => {
+    if (selectedExpense) {
+      addExpense({
+        ...selectedExpense,
+        date: new Date().toISOString().split("T")[0],
+      });
+    } else {
+      alert("Plese Select rurring data what you want to apply in expense");
+    }
   };
 
   return (
@@ -60,8 +93,8 @@ const RecurringExpenses = () => {
         >
           <option value="">Select Category</option>
           {categories.map((cat, idx) => (
-            <option key={idx} value={cat}>
-              {cat}
+            <option key={idx} value={cat?.name}>
+              {cat?.name}
             </option>
           ))}
         </select>
@@ -83,12 +116,37 @@ const RecurringExpenses = () => {
           Add Recurring
         </button>
       </div>
-      <button
-        onClick={applyRecurringExpenses}
-        className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 dark:bg-green-700 dark:hover:bg-green-600"
-      >
-        Apply Recurring Expenses
-      </button>
+
+      <div className="mt-4">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+          Current Recurring Expenses
+        </h3>
+        <ul className="list-disc pl-6 mt-2">
+          {recurring?.map((expense, idx) => (
+            <li
+              key={idx}
+              className="text-gray-800 dark:text-gray-200"
+              onClick={() => setSelectedExpense(expense)}
+              style={{
+                cursor: "pointer",
+                backgroundColor:
+                  selectedExpense?.description === expense.description
+                    ? "#e2e8f0" // Highlight the selected expense
+                    : "transparent",
+              }}
+            >
+              {expense.description} - ₹{expense.amount} ({expense.frequency})
+              for -({expense?.category})
+            </li>
+          ))}
+        </ul>
+        <button
+          onClick={applyRecurringExpense}
+          className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 dark:bg-green-700 dark:hover:bg-green-600"
+        >
+          Apply Selected Recurring Expense
+        </button>
+      </div>
     </div>
   );
 };
